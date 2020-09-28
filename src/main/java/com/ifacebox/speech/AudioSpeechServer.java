@@ -16,7 +16,7 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
 
-public class AudioSpeechServer {
+public class AudioSpeechServer implements StreamObserver<StreamingSpeechResponse> {
     private ManagedChannel managedChannel;
     private SpeechRecognitionStub speechRecognitionStub;
     private StreamObserver<StreamingSpeechRequest> streamObserverRequest;
@@ -32,33 +32,7 @@ public class AudioSpeechServer {
         System.out.println("依图实时语音转写服务启动中...");
         managedChannel = ManagedChannelBuilder.forAddress(audioSpeechConfig.getIp(), audioSpeechConfig.getPort()).usePlaintext().build();
         speechRecognitionStub = SpeechRecognitionGrpc.newStub(ClientInterceptors.intercept(managedChannel, new SpeechClientInterceptor(audioSpeechConfig)));
-        streamObserverRequest = speechRecognitionStub.recognizeStream(new StreamObserver<StreamingSpeechResponse>() {
-            @Override
-            public void onNext(StreamingSpeechResponse response) {
-                StreamingSpeechStatus status = response.getStatus();
-                System.err.println("当前音频处理进行到的时间点（音频开始时间为0）：" + status.getProcessedTimestamp());
-                StreamingSpeechResult result = response.getResult();
-                System.err.println("此识别结果是否为最终结果：" + result.getIsFinal());
-                StreamingTranscription transcription = result.getBestTranscription();
-                System.err.println("转写结果：" + transcription.getTranscribedText());
-                if (audioDataCallback != null && !transcription.getTranscribedText().isEmpty()) {
-                    audioDataCallback.onText(result.getIsFinal(), transcription.getTranscribedText());
-                }
-            }
-
-            @Override
-            public void onError(Throwable t) {
-                System.err.println("异常：" + t);
-                if (audioDataCallback != null) {
-                    audioDataCallback.onError(t);
-                }
-            }
-
-            @Override
-            public void onCompleted() {
-                System.err.println("完成：");
-            }
-        });
+        streamObserverRequest = speechRecognitionStub.recognizeStream(this);
         streamObserverRequest.onNext(StreamingSpeechRequest.newBuilder().setStreamingSpeechConfig(getStreamingSpeechConfig()).build());
         System.out.println("依图实时语音转写服务启动完成");
     }
@@ -67,6 +41,34 @@ public class AudioSpeechServer {
         System.out.println("依图实时语音转写服务停止中...");
         managedChannel.shutdown();
         System.out.println("依图实时语音转写服务停止完成");
+    }
+
+    @Override
+    public void onNext(StreamingSpeechResponse response) {
+        StreamingSpeechStatus status = response.getStatus();
+        System.err.println("当前音频处理进行到的时间点（音频开始时间为0）：" + status.getProcessedTimestamp());
+        StreamingSpeechResult result = response.getResult();
+        System.err.println("此识别结果是否为最终结果：" + result.getIsFinal());
+        StreamingTranscription transcription = result.getBestTranscription();
+        System.err.println("转写结果：" + transcription.getTranscribedText());
+        if (!transcription.getTranscribedText().isEmpty()) {
+            audioDataCallback.onText(result.getIsFinal(), transcription.getTranscribedText());
+        }
+    }
+
+    @Override
+    public void onError(Throwable t) {
+        System.err.println("异常：" + t);
+        audioDataCallback.onError(t);
+    }
+
+    @Override
+    public void onCompleted() {
+        System.err.println("完成：");
+    }
+
+    public void setAudioData(byte[] bytes) {
+        this.setAudioData(bytes, 0, bytes.length);
     }
 
     public void setAudioData(byte[] bytes, int offset, int size) {

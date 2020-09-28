@@ -66,7 +66,7 @@ public class AudioSpeechTransfer implements Runnable {
                 } else {
                     byte[] data = buffer.array();
                     System.out.println("间隔[" + AUDIO_SPEECH_TIME + "]毫秒发送数据：" + data.length);
-                    audioSpeechServer.setAudioData(data, 0, data.length);
+                    audioSpeechServer.setAudioData(data);
                     buffer.clear();
                     ms = System.currentTimeMillis();
                 }
