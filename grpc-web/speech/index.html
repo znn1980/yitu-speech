@@ -23,29 +23,46 @@
     </tr>
 </table>
 <script src="js/asr_streaming_grpc_web_pb2.js"></script>
+<script src="js/crypto-js.js"></script>
 <script type="text/javascript">
-    const hostName = "stream-asr-prod.yitutech.com:50051";
-    const devId = "21501";
-    const devKey = "NGE3ZTQ3MDBjNmU5NDhhZTgyMDJmMjNjOTI4NzhlY2U=";
-    const sampleRate = 16000;
-
-    const speechConfig = new proto.SpeechConfig();
-    speechConfig.setLang(proto.SpeechConfig.Language.MANDARIN);
-    speechConfig.setScene(proto.SpeechConfig.Scene.GENERALSCENE);
-    const audioConfig = new proto.AudioConfig();
-    audioConfig.setAue(proto.AudioConfig.AudioEncoding.PCM);
-    audioConfig.setSamplerate(sampleRate);
-    const streamingSpeechConfig = new proto.StreamingSpeechConfig();
-    streamingSpeechConfig.setSpeechconfig(speechConfig);
-    streamingSpeechConfig.setAudioconfig(audioConfig);
-    const request = new proto.StreamingSpeechRequest();
-    request.setStreamingspeechconfig(streamingSpeechConfig);
-
-    const metaData = {'x-api-key': ''};
-    SpeechRecognitionClient(hostName, metaData, {});
-
-
-
+    const SpeechRecognitionGrpc = function () {
+        const hostName = "stream-asr-prod.yitutech.com:50051";
+        const devId = "21501";
+        const devKey = "NGE3ZTQ3MDBjNmU5NDhhZTgyMDJmMjNjOTI4NzhlY2U=";
+        const sampleRate = 16000;
+        this.getMetaData = function () {
+            const timestamp = parseInt(new Date().getTime() / 1000);
+            const signature = CryptoJS.enc.Hex.stringify(CryptoJS.HmacSHA256(devId + timestamp, devKey));
+            const metaData = {
+                'x-dev-id': devId
+                , 'x-request-send-timestamp': timestamp
+                , 'x-signature': signature
+                , 'x-api-key': devId + ',' + timestamp + ',' + signature
+            };
+            return metaData;
+        };
+        this.getStreamingSpeechConfig = function () {
+            const speechConfig = new proto.SpeechConfig();
+            speechConfig.setLang(proto.SpeechConfig.Language.MANDARIN);
+            speechConfig.setScene(proto.SpeechConfig.Scene.GENERALSCENE);
+            const audioConfig = new proto.AudioConfig();
+            audioConfig.setAue(proto.AudioConfig.AudioEncoding.PCM);
+            audioConfig.setSamplerate(sampleRate);
+            const streamingSpeechConfig = new proto.StreamingSpeechConfig();
+            streamingSpeechConfig.setSpeechconfig(speechConfig);
+            streamingSpeechConfig.setAudioconfig(audioConfig);
+            return streamingSpeechConfig;
+        };
+        this.recognizeStream = function () {
+            const request = new proto.StreamingSpeechRequest();
+            request.setStreamingspeechconfig(this.getStreamingSpeechConfig());
+            const metaData = this.getMetaData();
+            console.log(metaData);
+            SpeechRecognitionClient(hostName, metaData, {});
+        }
+    }
+    const stub = new SpeechRecognitionGrpc();
+    stub.recognizeStream();
 </script>
 </body>
 </html>
