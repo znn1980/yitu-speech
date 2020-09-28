@@ -6,19 +6,7 @@ import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-import javax.swing.Box;
-import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JComponent;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTabbedPane;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import javax.swing.UIManager;
+import javax.swing.*;
 
 /**
  * <pre>
@@ -29,7 +17,7 @@ import javax.swing.UIManager;
  * 连接路数	1路代表单个连接每秒发送1秒时长的音频（如果发送过快，超出的数据会被服务端丢弃，造成回显结果异常）
  * </pre>
  */
-public class AudioSpeechUI extends JFrame implements ActionListener {
+public class AudioSpeechUI extends JFrame implements ActionListener, AudioDataCallback {
     private static final long serialVersionUID = 1L;
     public static final Image SPEECH = new ImageIcon(AudioSpeechUI.class.getResource("/speech.png")).getImage().getScaledInstance(32, 32, Image.SCALE_SMOOTH);
     private JTabbedPane jTabbedPane;
@@ -50,35 +38,22 @@ public class AudioSpeechUI extends JFrame implements ActionListener {
     private JTextField jTextFieldDevKey;
     private JTextField jTextFieldSampleRate;
     private JButton jButtonConfigSave;
-    private JButton jButtonConfigStart;
-    private JButton jButtonConfigStop;
     private AudioSpeechTransfer audioSpeechTransfer;
-    private AudioSpeechServer server;
-    private AudioSpeechConfig config;
+    private AudioSpeechConfig audioSpeechConfig;
 
     public AudioSpeechUI() {
-        config = new AudioSpeechConfig();
+        audioSpeechConfig = new AudioSpeechConfig();
         super.setTitle("实时语音转写");
         super.setIconImage(SPEECH);
         super.setDefaultCloseOperation(EXIT_ON_CLOSE);
         super.add(jTabbedPane = new JTabbedPane());
-        this.init();
+        this.initComponents();
         super.pack();
         super.setLocationRelativeTo(null);
         super.setResizable(false);
-        server = new AudioSpeechServer(config, new AudioDataCallback() {
-            @Override
-            public void setText(boolean isFinal, String text) {
-                jLabelSpeech.setText(text);
-                if (isFinal) {
-                    jTextArea.append(text + "\r\n");
-                    jTextArea.setCaretPosition(jTextArea.getText().length());
-                }
-            }
-        });
     }
 
-    public void init() {
+    public void initComponents() {
         jTabbedPane.add("语音转写", jPanelSpeech = new JPanel());
         jTabbedPane.add("服务设置", jPanelConfig = new JPanel());
         jPanelSpeech.setLayout(new BorderLayout());
@@ -111,30 +86,21 @@ public class AudioSpeechUI extends JFrame implements ActionListener {
         jPanelConfigTools.setLayout(new FlowLayout());
         jPanelConfigTools.add(jButtonConfigSave = new JButton("保存"));
         jButtonConfigSave.addActionListener(this);
-        jPanelConfigTools.add(jButtonConfigStart = new JButton("启动"));
-        jButtonConfigStart.addActionListener(this);
-        jPanelConfigTools.add(jButtonConfigStop = new JButton("停止"));
-        jButtonConfigStop.addActionListener(this);
-        jButtonConfigStop.setEnabled(false);
 
-        jTextFieldIp.setText(config.getIp());
-        jTextFieldPort.setText(String.valueOf(config.getPort()));
-        jTextFieldDevId.setText(config.getDevId());
-        jTextFieldDevKey.setText(config.getDevKey());
-        jTextFieldSampleRate.setText(String.valueOf(config.getSampleRate()));
+        jTextFieldIp.setText(audioSpeechConfig.getIp());
+        jTextFieldPort.setText(String.valueOf(audioSpeechConfig.getPort()));
+        jTextFieldDevId.setText(audioSpeechConfig.getDevId());
+        jTextFieldDevKey.setText(audioSpeechConfig.getDevKey());
+        jTextFieldSampleRate.setText(String.valueOf(audioSpeechConfig.getSampleRate()));
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == jButtonSpeechStart) {
-            if (!server.isRunning()) {
-                JOptionPane.showMessageDialog(this, "请先在服务设置中启动服务！");
-            } else {
-                jButtonSpeechStart.setEnabled(false);
-                jButtonSpeechStop.setEnabled(true);
-                audioSpeechTransfer = new AudioSpeechTransfer(server);
-                audioSpeechTransfer.start();
-            }
+            jButtonSpeechStart.setEnabled(false);
+            jButtonSpeechStop.setEnabled(true);
+            audioSpeechTransfer = new AudioSpeechTransfer(audioSpeechConfig, this);
+            audioSpeechTransfer.start();
         }
         if (e.getSource() == jButtonSpeechStop) {
             jButtonSpeechStart.setEnabled(true);
@@ -146,35 +112,32 @@ public class AudioSpeechUI extends JFrame implements ActionListener {
         }
         if (e.getSource() == jButtonConfigSave) {
             try {
-                config.setIp(jTextFieldIp.getText());
-                config.setPort(Integer.parseInt(jTextFieldPort.getText()));
-                config.setDevId(jTextFieldDevId.getText());
-                config.setDevKey(jTextFieldDevKey.getText());
-                config.setSampleRate(Integer.parseInt(jTextFieldSampleRate.getText()));
-                server.setAudioSpeechConfig(config);
+                audioSpeechConfig.setIp(jTextFieldIp.getText());
+                audioSpeechConfig.setPort(Integer.parseInt(jTextFieldPort.getText()));
+                audioSpeechConfig.setDevId(jTextFieldDevId.getText());
+                audioSpeechConfig.setDevKey(jTextFieldDevKey.getText());
+                audioSpeechConfig.setSampleRate(Integer.parseInt(jTextFieldSampleRate.getText()));
             } catch (Exception ex) {
             }
         }
-        if (e.getSource() == jButtonConfigStart) {
-            jButtonConfigStart.setEnabled(false);
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    server.start();
-                    jButtonConfigStop.setEnabled(true);
-                }
-            }).start();
+    }
+
+    @Override
+    public void onText(boolean isFinal, String text) {
+        jLabelSpeech.setText(text);
+        if (isFinal) {
+            jTextArea.append(text + "\r\n");
+            jTextArea.setCaretPosition(jTextArea.getText().length());
         }
-        if (e.getSource() == jButtonConfigStop) {
-            jButtonConfigStop.setEnabled(false);
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    server.stop();
-                    jButtonConfigStart.setEnabled(true);
-                }
-            }).start();
-        }
+    }
+
+    @Override
+    public void onError(Throwable t) {
+        jButtonSpeechStart.setEnabled(true);
+        jButtonSpeechStop.setEnabled(false);
+        audioSpeechTransfer.stop();
+        audioSpeechTransfer = null;
+        JOptionPane.showMessageDialog(this, "语音转写异常【" + t.getMessage() + "】");
     }
 
     public Box addFieldBox(String label, JComponent field) {
