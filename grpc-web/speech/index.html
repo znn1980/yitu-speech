@@ -10,61 +10,42 @@
 <body>
 <table align="center">
     <tr align="center">
-        <td colspan="5">实时语音转写</td>
+        <td colspan="4">实时语音转写</td>
     </tr>
     <tr>
-        <td colspan="5"><textarea style="width: 100%;height: 200px;"></textarea></td>
+        <td colspan="4"><textarea id="text" style="width: 100%;height: 200px;"></textarea></td>
     </tr>
     <tr>
         <td width="16"><img src="img/speech.png" width="16" height="16"></td>
-        <td align="left"><span>正在说话...</span></td>
-        <td width="20"><input onclick="speech.start()" type="button" value="录音"/></td>
-        <td width="20"><input onclick="speech.stop()" type="button" value="停止"/></td>
-        <td width="20"><input onclick="speech.play()" type="button" value="播放"/></td>
-    </tr>
-    <tr align="center">
-        <td colspan="5">
-            <audio controls autoplay></audio>
-        </td>
+        <td width="300" align="left"><span id="say">正在说话...</span></td>
+        <td width="20"><input id="start" type="button" value="录音"/></td>
+        <td width="20"><input id="stop" type="button" value="停止"/></td>
     </tr>
 </table>
 <script src="js/asr_streaming_grpc_web_pb2.js"></script>
-<script src="js/HZRecorder.js"></script>
 <script type="text/javascript">
-    const speech = {
-        recorder: null
-        , audio: document.querySelector('audio')
-        , start: function () {
-            HZRecorder.get(function (rec) {
-                speech.recorder = rec;
-                speech.recorder.start();
-            });
-        }
-        , stop: function () {
-            speech.recorder.stop();
-        }
-        , play: function () {
-            speech.recorder.play(speech.audio);
-        }
-    };
-</script>
-<script type="text/javascript">
-    /*
-        const speechConfig = new proto.SpeechConfig();
-        speechConfig.setLang(proto.SpeechConfig.Language.MANDARIN);
-        speechConfig.setScene(proto.SpeechConfig.Scene.GENERALSCENE);
-        const audioConfig = new proto.AudioConfig();
-        audioConfig.setAue(proto.AudioConfig.AudioEncoding.PCM);
-        audioConfig.setSamplerate(16000);
-        const streamingSpeechConfig = new proto.StreamingSpeechConfig();
-        streamingSpeechConfig.setSpeechconfig(speechConfig);
-        streamingSpeechConfig.setAudioconfig(audioConfig);
+    const hostName = "stream-asr-prod.yitutech.com:50051";
+    const devId = "21501";
+    const devKey = "NGE3ZTQ3MDBjNmU5NDhhZTgyMDJmMjNjOTI4NzhlY2U=";
+    const sampleRate = 16000;
 
-        const client = new proto.SpeechRecognitionClient('stream-asr-prod.yitutech.com:50051', null,null);
+    const speechConfig = new proto.SpeechConfig();
+    speechConfig.setLang(proto.SpeechConfig.Language.MANDARIN);
+    speechConfig.setScene(proto.SpeechConfig.Scene.GENERALSCENE);
+    const audioConfig = new proto.AudioConfig();
+    audioConfig.setAue(proto.AudioConfig.AudioEncoding.PCM);
+    audioConfig.setSamplerate(sampleRate);
+    const streamingSpeechConfig = new proto.StreamingSpeechConfig();
+    streamingSpeechConfig.setSpeechconfig(speechConfig);
+    streamingSpeechConfig.setAudioconfig(audioConfig);
+    const request = new proto.StreamingSpeechRequest();
+    request.setStreamingspeechconfig(streamingSpeechConfig);
 
-        const request = new proto.StreamingSpeechRequest();
-        request.setStreamingspeechconfig(streamingSpeechConfig);
-    */
+    const metaData = {'x-api-key': ''};
+    SpeechRecognitionClient(hostName, metaData, {});
+
+
+
 </script>
 </body>
 </html>
